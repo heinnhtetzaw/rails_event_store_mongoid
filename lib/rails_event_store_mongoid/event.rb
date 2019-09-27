@@ -17,5 +17,13 @@ module RailsEventStoreMongoid
 
     index(event_id: 1)
     index(stream: 1, ts: 1)
+
+    def self.has_duplicate?(serialized_record, stream_name, linking_event_to_another_stream)
+      if linking_event_to_another_stream
+        Event.where(id: serialized_record.event_id).length > 1
+      else
+        Event.where(id: serialized_record.event_id, stream: stream_name).length > 0
+      end
+    end
   end
 end
