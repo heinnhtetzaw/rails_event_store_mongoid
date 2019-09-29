@@ -1,10 +1,15 @@
 module RailsEventStoreMongoid
   class EventRepository
 
+    POSITION_SHIFT = 1
+    SERIALIZED_GLOBAL_STREAM_NAME = "all".freeze
+
+    attr_reader :adapter
+
     def initialize(adapter: ::RailsEventStoreMongoid::Event)
       @adapter = adapter
+      @repo_reader = EventRepositoryReader.new
     end
-    attr_reader :adapter
 
     def create(event, stream_name)
       adapter.create(
@@ -84,6 +89,14 @@ module RailsEventStoreMongoid
         .map(&method(:build_event_entity))
     end
 
+    def read(spec)
+      @repo_reader.read(spec)
+    end
+
+    def count(specification)
+      @repo_reader.count(specification)
+    end
+
     def append_to_stream(events, stream, expected_version)
       add_to_stream(normalize_to_array(events), stream, expected_version, true)
 
@@ -114,7 +127,9 @@ module RailsEventStoreMongoid
       last_stream_version = -> (stream_) do
         Event
           .where(stream: stream_.name)
-          .last
+          .order_by(position: :desc)
+          .first
+          .try(:position)
       end
       resolved_version = expected_version.resolve_for(stream, last_stream_version)
 
