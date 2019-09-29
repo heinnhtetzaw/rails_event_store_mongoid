@@ -13,6 +13,8 @@ module RailsEventStoreMongoid
     field :meta, type: Hash, default: {}
     field :data, type: Hash, default: {}
 
+    field :position, type: Integer
+
     field :ts, type: BSON::Timestamp, default: -> { BSON::Timestamp.new(0, 0) }
 
     index(event_id: 1)
@@ -20,9 +22,9 @@ module RailsEventStoreMongoid
 
     def self.has_duplicate?(serialized_record, stream_name, linking_event_to_another_stream)
       if linking_event_to_another_stream
-        Event.where(id: serialized_record.event_id).length > 1
+        Event.where(id: serialized_record.event_id).count > 1
       else
-        Event.where(id: serialized_record.event_id, stream: stream_name).length > 0
+        Event.where(id: serialized_record.event_id, stream: stream_name).count > 0
       end
     end
   end
