@@ -8,7 +8,7 @@ module RailsEventStoreMongoid
 
     def initialize(adapter: ::RailsEventStoreMongoid::Event)
       @adapter = adapter
-      @repo_reader = EventRepositoryReader.new
+      @repo_reader = RailsEventStoreMongoid::EventRepositoryReader.new
     end
 
     def create(event, stream_name)
