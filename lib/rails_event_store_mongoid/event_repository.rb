@@ -151,7 +151,7 @@ module RailsEventStoreMongoid
         collection
       end
 
-      Event.import(in_stream)
+      Event.create(in_stream)
 
       self
     end

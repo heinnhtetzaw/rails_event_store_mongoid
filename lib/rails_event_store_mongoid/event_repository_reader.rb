@@ -40,11 +40,7 @@ module RailsEventStoreMongoid
       stream = stream.limit(spec.limit) if spec.limit?
       stream = start_condition(spec) if spec.start
       stream = stop_condition(spec) if spec.stop
-      if spec.direction == :forward
-        stream = stream.order_by(id: :asc)
-      else
-        stream = stream.order_by(id: :desc)
-      end
+      stream = stream.order_by(id: order(spec))
       stream
     end
 

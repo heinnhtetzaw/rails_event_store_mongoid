@@ -4,4 +4,3 @@ require 'rails_event_store_mongoid/event_repository'
 require 'rails_event_store_mongoid/event_repository_reader'
 require 'rails_event_store_mongoid/version'
 
-# RailsEventStore.event_repository = RailsEventStoreMongoid::EventRepository.new
