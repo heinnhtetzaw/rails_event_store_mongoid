@@ -196,5 +196,9 @@ module RailsEventStoreMongoid
         resolved_version + index + POSITION_SHIFT
       end
     end
+
+    def expected_version_exists?(stream_name, expected_version)
+      Event.where(stream: stream_name, position: expected_version).count > 0
+    end
   end
 end
