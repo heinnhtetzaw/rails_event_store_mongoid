@@ -6,6 +6,11 @@ describe RailsEventStoreMongoid::EventRepository do
 
   # https://github.com/arkency/ruby_event_store/pull/31
   # it_behaves_like :event_repository, described_class
+  let(:mapper)                     { RubyEventStore::Mappers::NullMapper.new }
+  let(:repository)                 { described_class.new }
+  let(:reader)                     { RubyEventStore::SpecificationReader.new(repository, mapper) }
+  let(:specification)              { RubyEventStore::Specification.new(reader) }
+
 
   specify 'initialize with adapter' do
     repository = described_class.new
@@ -73,5 +78,38 @@ describe RailsEventStoreMongoid::EventRepository do
     specify '#read_all_streams_forward' do
       expect(subject.read_all_streams_forward(1, 5).map(&:event_id)).to eq([20,4,3])
     end
+
+    specify '#delete_stream' do
+      subject.delete_stream('other_stream')
+      expect(subject.read_events_forward(stream_name, 2, 5).map(&:event_id)).to eq([1,4,3])
+    end
+  end
+
+  specify "all considered internal detail" do
+    repository.append_to_stream(
+      [RubyEventStore::SRecord.new],
+      RubyEventStore::Stream.new(RubyEventStore::GLOBAL_STREAM),
+      RubyEventStore::ExpectedVersion.any
+    )
+
+    expect do
+      repository.read(specification.stream("all").result)
+    end.to raise_error(RubyEventStore::ReservedInternalName)
+
+    # expect do
+    #   repository.read(specification.stream("all").backward.result)
+    # end.to raise_error(RubyEventStore::ReservedInternalName)
+
+    # expect do
+    #   repository.read(specification.stream("all").limit(5).result)
+    # end.to raise_error(RubyEventStore::ReservedInternalName)
+
+    # expect do
+    #   repository.read(specification.stream("all").limit(5).backward.result)
+    # end.to raise_error(RubyEventStore::ReservedInternalName)
+
+    # expect do
+    #   repository.count(specification.stream("all").result)
+    # end.to raise_error(RubyEventStore::ReservedInternalName)
   end
 end

@@ -127,7 +127,7 @@ module RailsEventStoreMongoid
       last_stream_version = -> (stream_) do
         Event
           .where(stream: stream_.name)
-          .order_by(position: :desc)
+          .order_by(id: :desc)
           .first
           .try(:position)
       end
@@ -138,7 +138,6 @@ module RailsEventStoreMongoid
         position = compute_position(resolved_version, index)
 
         collection = []
-
         if include_global
           collection << build_event_record_hash(element, SERIALIZED_GLOBAL_STREAM_NAME, nil)
         end
@@ -167,7 +166,7 @@ module RailsEventStoreMongoid
 
     def build_event_record_hash(serialized_record, stream, position)
       {
-        id:         serialized_record.event_id,
+        event_id:   serialized_record.event_id,
         stream:     stream,
         position:   position,
         data:       serialized_record.data,
@@ -179,7 +178,7 @@ module RailsEventStoreMongoid
     def build_event_instance(mongoid_record)
       return nil unless mongoid_record
       RubyEventStore::SerializedRecord.new(
-        event_id:   mongoid_record.id,
+        event_id:   mongoid_record.event_id,
         metadata:   mongoid_record.meta,
         data:       mongoid_record.data,
         event_type: mongoid_record.event_type,

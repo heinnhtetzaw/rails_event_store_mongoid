@@ -5,7 +5,7 @@ module RailsEventStoreMongoid
     end
 
     def read(spec)
-      raise RubyEventStore::ReservedInternalName if spec.stream_name.eql?(EventRepository::SERIALIZED_GLOBAL_STREAM_NAME)
+      raise RubyEventStore::ReservedInternalName if spec.stream.name.eql?(EventRepository::SERIALIZED_GLOBAL_STREAM_NAME)
 
       stream = read_scope(spec)
 
@@ -38,48 +38,34 @@ module RailsEventStoreMongoid
       stream = stream.where(event_id: { '$in': spec.with_ids }) if spec.with_ids?
       stream = stream.order_by(position: order(spec)) unless spec.stream.global?
       stream = stream.limit(spec.limit) if spec.limit?
-      stream = start_condition(spec) if spec.start
-      stream = stop_condition(spec) if spec.stop
+      stream = start_condition(spec,stream) if spec.start
+      stream = stop_condition(spec,stream) if spec.stop
       stream = stream.order_by(id: order(spec))
       stream
     end
 
     def normalize_stream_name(specification)
-      specification.global_stream? ? EventRepository::SERIALIZED_GLOBAL_STREAM_NAME : specification.stream_name
+      specification.stream.global? ? EventRepository::SERIALIZED_GLOBAL_STREAM_NAME : specification.stream.name
     end
 
-    def start_condition(spec)
+    def start_condition(spec,stream)
       event_record = Event.find_by(event_id: spec.start, stream: normalize_stream_name(spec))
 
-      criteria_value = ''
+      criteria_value = event_record.created_at
 
-      if spec.global_stream?
-        criteria_value = event_record.created_at
-      else
-        criteria_value = event_record.position
-      end
-
-      case spec.direction
-      when :forward
+      if spec.forward?
         stream.where(:created_at.gt => criteria_value)
       else
         stream.where(:created_at.lt => criteria_value)
       end
     end
 
-    def stop_condition(spec)
+    def stop_condition(spec,stream)
       event_record = Event.find_by(event_id: spec.stop, stream: normalize_stream_name(spec))
 
-      criteria_value = ''
+      criteria_value = event_record.created_at
 
-      if spec.global_stream?
-        criteria_value = event_record.created_at
-      else
-        criteria_value = event_record.position
-      end
-
-      case spec.direction
-      when :forward
+      if spec.forward?
         stream.where(:created_at.lt => criteria_value)
       else
         stream.where(:created_at.gt => criteria_value)
@@ -90,7 +76,7 @@ module RailsEventStoreMongoid
       return nil unless mongoid_record
 
       RubyEventStore::SerializedRecord.new(
-        event_id: mongoid_record.id,
+        event_id: mongoid_record.event_id,
         metadata: mongoid_record.meta,
         data: mongoid_record.data,
         event_type: mongoid_record.event_type

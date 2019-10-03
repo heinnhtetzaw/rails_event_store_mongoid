@@ -3,4 +3,4 @@ test:
     default:
       database: rails_event_store_mongoid_test
       hosts:
-        - localhost:27027
+        - localhost:27017
