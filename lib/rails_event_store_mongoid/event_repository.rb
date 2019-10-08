@@ -22,17 +22,16 @@ module RailsEventStoreMongoid
       event
     end
 
-    def delete_stream(stream_name)
-      condition = {stream: stream_name}
-      adapter.destroy_all condition
+    def delete_stream(stream)
+      adapter.where(stream: stream.name).delete_all
     end
 
     def has_event?(event_id)
       adapter.where(event_id: event_id).exists?
     end
 
-    def last_stream_event(stream_name)
-      build_event_entity(adapter.where(stream: stream_name).desc(:ts).first)
+    def last_stream_event(stream)
+      @repo_reader.last_stream_event(stream)
     end
 
     def read_events_forward(stream_name, start_event_id, count)
@@ -99,15 +98,13 @@ module RailsEventStoreMongoid
 
     def append_to_stream(events, stream, expected_version)
       add_to_stream(normalize_to_array(events), stream, expected_version, true)
-
-      self
     end
 
     def link_to_stream(event_ids, stream, expected_version)
       normalized_event_ids = normalize_to_array(event_ids)
       found_events = []
       normalized_event_ids.each do |event_id|
-        if event = Event.where(id: event_id).first
+        if event = Event.where(event_id: event_id).first
           found_events << build_event_instance(event)
         end
       end
@@ -121,13 +118,20 @@ module RailsEventStoreMongoid
       self
     end
 
+    def streams_of(event_id)
+      Event.where(event_id: event_id)
+        .where(:stream.ne => SERIALIZED_GLOBAL_STREAM_NAME)
+        .pluck(:stream)
+        .map{|name| RubyEventStore::Stream.new(name)}
+    end
+
     private
 
     def add_to_stream(collection, stream, expected_version, include_global)
       last_stream_version = -> (stream_) do
         Event
           .where(stream: stream_.name)
-          .order_by(id: :desc)
+          .order_by(position: :desc)
           .first
           .try(:position)
       end
@@ -141,7 +145,6 @@ module RailsEventStoreMongoid
         if include_global
           collection << build_event_record_hash(element, SERIALIZED_GLOBAL_STREAM_NAME, nil)
         end
-
         unless stream.global?
           raise RubyEventStore::WrongExpectedEventVersion if expected_version_exists? stream.name, position
           raise RubyEventStore::EventDuplicatedInStream if adapter.has_duplicate?(element, stream.name, include_global)
@@ -197,6 +200,7 @@ module RailsEventStoreMongoid
     end
 
     def expected_version_exists?(stream_name, expected_version)
+      return false if expected_version.nil?
       Event.where(stream: stream_name, position: expected_version).count > 0
     end
   end
