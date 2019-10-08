@@ -5,11 +5,16 @@ require 'ruby_event_store/spec/event_repository_lint'
 describe RailsEventStoreMongoid::EventRepository do
 
   # https://github.com/arkency/ruby_event_store/pull/31
-  # it_behaves_like :event_repository, described_class
+  it_behaves_like :event_repository, described_class
   let(:mapper)                     { RubyEventStore::Mappers::NullMapper.new }
   let(:repository)                 { described_class.new }
   let(:reader)                     { RubyEventStore::SpecificationReader.new(repository, mapper) }
   let(:specification)              { RubyEventStore::Specification.new(reader) }
+  let(:stream)                     { RubyEventStore::Stream.new('stream') }
+  let(:test_race_conditions_any ) { false }
+  let(:test_race_conditions_auto ) { false }
+  let(:test_binary) { false }
+  let(:test_change) { false }
 
 
   specify 'initialize with adapter' do
@@ -24,7 +29,8 @@ describe RailsEventStoreMongoid::EventRepository do
   end
 
   describe 'event ordering' do
-    let(:stream_name) { 'test_stream' }
+    let(:stream_name)             { 'test_stream' }
+    let(:test_stream) { RubyEventStore::Stream.new('test_stream') }
 
     class SimpleEvent
       attr_reader :event_id
@@ -33,8 +39,8 @@ describe RailsEventStoreMongoid::EventRepository do
       end
     end
 
-    def create_event(event_id:, stream: stream_name)
-      internal = { event_type: 'SimpleEvent', stream: stream }
+    def create_event(event_id:, stream: test_stream)
+      internal = { event_type: 'SimpleEvent', stream: stream.name }
       RailsEventStoreMongoid::Event.create!(
                        internal.merge(event_id: event_id, id: event_id)
       )
@@ -44,7 +50,8 @@ describe RailsEventStoreMongoid::EventRepository do
       create_event(event_id: 2)
       create_event(event_id: 1)
 
-      create_event(event_id: 20, stream: 'other_stream')
+      create_event(event_id: 20, stream: RubyEventStore::Stream.new('other_stream'))
+      create_event(event_id: 5, stream: stream)
 
       create_event(event_id: 4)
       create_event(event_id: 3)
@@ -52,7 +59,7 @@ describe RailsEventStoreMongoid::EventRepository do
     end
 
     specify '#last_stream_event' do
-      expect(subject.last_stream_event(stream_name).event_id).to eq(3)
+      expect(subject.last_stream_event(stream).event_id.to_i).to eq(5)
     end
 
     specify '#read_events_forward' do
@@ -72,15 +79,15 @@ describe RailsEventStoreMongoid::EventRepository do
     end
 
     specify '#read_all_streams_backward' do
-      expect(subject.read_all_streams_backward(4, 5).map(&:event_id)).to eq([20,1,2])
+      expect(subject.read_all_streams_backward(4, 5).map(&:event_id)).to eq([5,20,1,2])
     end
 
     specify '#read_all_streams_forward' do
-      expect(subject.read_all_streams_forward(1, 5).map(&:event_id)).to eq([20,4,3])
+      expect(subject.read_all_streams_forward(1, 5).map(&:event_id)).to eq([20,5,4,3])
     end
 
     specify '#delete_stream' do
-      subject.delete_stream('other_stream')
+      subject.delete_stream(RubyEventStore::Stream.new('other_stream'))
       expect(subject.read_events_forward(stream_name, 2, 5).map(&:event_id)).to eq([1,4,3])
     end
   end

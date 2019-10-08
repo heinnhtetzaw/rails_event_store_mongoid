@@ -133,8 +133,8 @@ describe RailsEventStoreMongoid::EventRepositoryReader do
       it "can query global events" do
         repository.append_to_stream(event = SRecord.new, stream, version_none)
 
-        spec = specification.limit(1).result
-        expect(subject.read(spec).first).to eq(event)
+        query = subject.read(specification.stream(stream.name).result)
+        expect(query.map(&:event_id)).to eq([event].map(&:event_id))
       end
     end
   end
