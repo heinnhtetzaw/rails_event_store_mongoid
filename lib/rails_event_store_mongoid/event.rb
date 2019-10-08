@@ -10,9 +10,8 @@ module RailsEventStoreMongoid
     field :stream, type: String
     field :event_id, type: String
     field :event_type, type: String
-    field :meta, type: String, default: ''
-    field :data, type: String, default: ''
-
+    field :meta, type: Hash
+    field :data, type: Hash
     field :position, type: Integer
 
     field :ts, type: BSON::Timestamp, default: -> { BSON::Timestamp.new(0, 0) }
