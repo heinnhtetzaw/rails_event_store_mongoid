@@ -4,6 +4,11 @@ module RailsEventStoreMongoid
       Event.where(id: event_id).exists?
     end
 
+    def last_stream_event(stream)
+      record = Event.where(stream: stream.name).order_by(position: :desc, id: :desc).first
+      record && build_event_instance(record)
+    end
+
     def read(spec)
       raise RubyEventStore::ReservedInternalName if spec.stream.name.eql?(EventRepository::SERIALIZED_GLOBAL_STREAM_NAME)
 
@@ -28,7 +33,7 @@ module RailsEventStoreMongoid
     def count(spec)
       raise RubyEventStore::ReservedInternalName if spec.stream.name.eql?(EventRepository::SERIALIZED_GLOBAL_STREAM_NAME)
 
-      read_scope(spec).count
+      Array(read_scope(spec)).count
     end
 
     private
@@ -36,6 +41,7 @@ module RailsEventStoreMongoid
     def read_scope(spec)
       stream = Event.where(stream: normalize_stream_name(spec))
       stream = stream.where(event_id: { '$in': spec.with_ids }) if spec.with_ids?
+      stream = stream.where(event_type: { '$in': spec.with_types }) if spec.with_types?
       stream = stream.order_by(position: order(spec)) unless spec.stream.global?
       stream = stream.limit(spec.limit) if spec.limit?
       stream = start_condition(spec,stream) if spec.start
