@@ -1,6 +1,6 @@
 require 'spec_helper'
 require 'ruby_event_store'
-require 'ruby_event_store/spec/event_repository_lint'
+require 'event_repository_lint'
 
 describe RailsEventStoreMongoid::EventRepository do
 
@@ -15,7 +15,6 @@ describe RailsEventStoreMongoid::EventRepository do
   let(:test_race_conditions_auto ) { false }
   let(:test_binary) { false }
   let(:test_change) { false }
-
 
   specify 'initialize with adapter' do
     repository = described_class.new
@@ -103,20 +102,20 @@ describe RailsEventStoreMongoid::EventRepository do
       repository.read(specification.stream("all").result)
     end.to raise_error(RubyEventStore::ReservedInternalName)
 
-    # expect do
-    #   repository.read(specification.stream("all").backward.result)
-    # end.to raise_error(RubyEventStore::ReservedInternalName)
+    expect do
+      repository.read(specification.stream("all").backward.result)
+    end.to raise_error(RubyEventStore::ReservedInternalName)
 
-    # expect do
-    #   repository.read(specification.stream("all").limit(5).result)
-    # end.to raise_error(RubyEventStore::ReservedInternalName)
+    expect do
+      repository.read(specification.stream("all").limit(5).result)
+    end.to raise_error(RubyEventStore::ReservedInternalName)
 
-    # expect do
-    #   repository.read(specification.stream("all").limit(5).backward.result)
-    # end.to raise_error(RubyEventStore::ReservedInternalName)
+    expect do
+      repository.read(specification.stream("all").limit(5).backward.result)
+    end.to raise_error(RubyEventStore::ReservedInternalName)
 
-    # expect do
-    #   repository.count(specification.stream("all").result)
-    # end.to raise_error(RubyEventStore::ReservedInternalName)
+    expect do
+      repository.count(specification.stream("all").result)
+    end.to raise_error(RubyEventStore::ReservedInternalName)
   end
 end
