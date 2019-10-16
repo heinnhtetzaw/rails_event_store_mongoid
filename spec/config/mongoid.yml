@@ -4,3 +4,5 @@ test:
       database: rails_event_store_mongoid_test
       hosts:
         - localhost:27017
+      options:
+        max_pool_size: 5

@@ -11,8 +11,8 @@ describe RailsEventStoreMongoid::EventRepository do
   let(:reader)                     { RubyEventStore::SpecificationReader.new(repository, mapper) }
   let(:specification)              { RubyEventStore::Specification.new(reader) }
   let(:stream)                     { RubyEventStore::Stream.new('stream') }
-  let(:test_race_conditions_any ) { false }
-  let(:test_race_conditions_auto ) { false }
+  let(:test_race_conditions_any ) { true }
+  let(:test_race_conditions_auto ) { true }
   let(:test_binary) { false }
   let(:test_change) { false }
 
@@ -117,5 +117,21 @@ describe RailsEventStoreMongoid::EventRepository do
     expect do
       repository.count(specification.stream("all").result)
     end.to raise_error(RubyEventStore::ReservedInternalName)
+  end
+
+  def verify_conncurency_assumptions
+    expect(Mongoid::Config.clients[:default][:options][:max_pool_size]).to eq(5)
+  end
+
+  def cleanup_concurrency_test
+    Mongoid.disconnect_clients
+  end
+
+  def additional_limited_concurrency_for_auto_check
+    positions = RailsEventStoreMongoid::Event
+      .where(stream: "stream")
+      .order_by(position: :asc)
+      .map(&:position)
+    expect(positions).to eq((0..positions.size-1).to_a)
   end
 end
