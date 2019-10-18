@@ -14,7 +14,7 @@ describe RailsEventStoreMongoid::EventRepository do
   let(:test_race_conditions_any ) { true }
   let(:test_race_conditions_auto ) { true }
   let(:test_binary) { false }
-  let(:test_change) { false }
+  let(:test_change) { true }
 
   specify 'initialize with adapter' do
     repository = described_class.new

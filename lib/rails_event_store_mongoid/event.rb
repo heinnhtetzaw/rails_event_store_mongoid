@@ -16,9 +16,7 @@ module RailsEventStoreMongoid
 
     field :ts, type: BSON::Timestamp, default: -> { BSON::Timestamp.new(0, 0) }
 
-    index({stream: 1, position: 1}, {unique: true})
-    index({stream: 1, event_id: 1}, {unique: true})
-    index(event_id: 1)
+    index({event_id: 1},{unique: true})
     index({stream: 1, ts: 1}, {unique: true})
 
     def self.has_duplicate?(serialized_record, stream_name, linking_event_to_another_stream)

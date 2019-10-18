@@ -125,6 +125,25 @@ module RailsEventStoreMongoid
         .map{|name| RubyEventStore::Stream.new(name)}
     end
 
+    def update_messages(messages)
+      hashes = messages.map(&:to_h)
+      for_update = messages.map(&:event_id)
+
+      existing = Event.where(event_id:  { '$in': for_update }).pluck(:event_id)
+      (for_update - existing).each{|event_id| raise RubyEventStore::EventNotFound.new(event_id) }
+
+      hashes.each do |h|
+        existing_ids = Event.where(event_id: h[:event_id]).pluck(:id)
+        existing_ids.each do |id|
+          event = Event.where(id: id).first
+          event.data = h[:data]
+          event.meta = h[:metadata]
+          event.event_type = h[:event_type]
+          event.upsert
+        end
+      end
+    end
+
     private
 
     def add_to_stream(collection, stream, expected_version, include_global)
@@ -143,12 +162,16 @@ module RailsEventStoreMongoid
 
         collection = []
         if include_global
-          collection << build_event_record_hash(element, SERIALIZED_GLOBAL_STREAM_NAME, nil)
+          collection.unshift(
+            build_event_record_hash(element, SERIALIZED_GLOBAL_STREAM_NAME, nil)
+          )
         end
         unless stream.global?
           raise RubyEventStore::WrongExpectedEventVersion if expected_version_exists? stream.name, position
           raise RubyEventStore::EventDuplicatedInStream if adapter.has_duplicate?(element, stream.name, include_global)
-          collection << build_event_record_hash(element, stream.name, position)
+          collection.unshift(
+            build_event_record_hash(element, stream.name, position)
+          )
         end
         collection
       end
